@@ -264,3 +264,13 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.form-error {
+  grid-column: 1 / -1;
+  margin-top: 0.25rem;
+}
+
+.error-msg {
+  color: #b91c1c;
+  font-size: 0.8rem;
+}

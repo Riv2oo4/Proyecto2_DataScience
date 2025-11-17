@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,6 +9,7 @@ import {
   Legend,
   CartesianGrid
 } from 'recharts'
+
 
 
 // Cambia esto si ya tienes un backend con endpoint /predict
@@ -69,6 +70,7 @@ const FEATURE_IMPORTANCE = [
 ]
 
 
+
 // Componente para seleccionar la métrica que se va a comparar visualmente
 function MetricSelector({ metric, onChange }) {
   return (
@@ -122,6 +124,7 @@ function ModelsTable({ models }) {
     </div>
   )
 }
+
 
 // Gráfico tipo “barra horizontal” hecho con CSS para comparar métricas
 function MetricBars({ models, metric }) {
@@ -195,13 +198,49 @@ function PredictionForm({ onSubmit, loading }) {
     favorites: '0'
   })
 
+  const [formError, setFormError] = useState('')
+
   const handleChange = (e) => {
     const { name, value } = e.target
+
+    // No permitir negativos en los contadores
+    if (['clicks', 'carts', 'purchases', 'favorites'].includes(name)) {
+      if (value === '') {
+        // permitir borrar para volver a escribir
+        setForm((prev) => ({ ...prev, [name]: '' }))
+        return
+      }
+      const num = Number(value)
+      if (Number.isNaN(num) || num < 0) {
+        // ignorar cambios negativos
+        return
+      }
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const isFormValid = () => {
+    // nada vacío
+    const hasEmpty = Object.values(form).some((v) => v === '')
+
+    // contadores >= 0
+    const numericFields = ['clicks', 'carts', 'purchases', 'favorites']
+    const hasNegative = numericFields.some((f) => Number(form[f]) < 0)
+
+    return !hasEmpty && !hasNegative
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (!isFormValid()) {
+      setFormError('Revisa los campos: no se permiten valores vacíos ni negativos.')
+      return
+    }
+
+    setFormError('')
+
     onSubmit({
       age_range: Number(form.age_range),
       gender: Number(form.gender),
@@ -211,6 +250,8 @@ function PredictionForm({ onSubmit, loading }) {
       favorites: Number(form.favorites)
     })
   }
+
+  const disabled = loading || !isFormValid()
 
   return (
     <div className="card">
@@ -227,6 +268,7 @@ function PredictionForm({ onSubmit, loading }) {
             name="age_range"
             value={form.age_range}
             onChange={handleChange}
+            required
           >
             <option value="0">Desconocido</option>
             <option value="3">Joven</option>
@@ -243,6 +285,7 @@ function PredictionForm({ onSubmit, loading }) {
             name="gender"
             value={form.gender}
             onChange={handleChange}
+            required
           >
             <option value="0">Femenino</option>
             <option value="1">Masculino</option>
@@ -258,6 +301,7 @@ function PredictionForm({ onSubmit, loading }) {
             name="clicks"
             value={form.clicks}
             onChange={handleChange}
+            required
           />
         </div>
 
@@ -269,6 +313,7 @@ function PredictionForm({ onSubmit, loading }) {
             name="carts"
             value={form.carts}
             onChange={handleChange}
+            required
           />
         </div>
 
@@ -280,6 +325,7 @@ function PredictionForm({ onSubmit, loading }) {
             name="purchases"
             value={form.purchases}
             onChange={handleChange}
+            required
           />
         </div>
 
@@ -291,18 +337,26 @@ function PredictionForm({ onSubmit, loading }) {
             name="favorites"
             value={form.favorites}
             onChange={handleChange}
+            required
           />
         </div>
 
         <div className="form-actions">
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={disabled}>
             {loading ? 'Calculando...' : 'Obtener predicciones'}
           </button>
         </div>
+
+        {formError && (
+          <div className="form-error">
+            <span className="error-msg">{formError}</span>
+          </div>
+        )}
       </form>
     </div>
   )
 }
+
 
 // Panel para mostrar el resultado de las predicciones
 function PredictionResults({ results }) {
@@ -395,10 +449,9 @@ function FeatureImportanceChart({ data }) {
             <YAxis />
             <Tooltip />
             <Legend />
-            {/* AQUÍ CAMBIAMOS */}
-            <Bar dataKey="Logistic" name="Logistic Regression" fill="#6366f1" /> {/* morado */}
-            <Bar dataKey="LightGBM" name="LightGBM"            fill="#0ea5e9" /> {/* celeste */}
-            <Bar dataKey="CatBoost"  name="CatBoost"           fill="#f97316" /> {/* naranja */}
+            <Bar dataKey="CatBoost"  name="CatBoost"           fill="#f97316" />
+            <Bar dataKey="LightGBM"  name="LightGBM"           fill="#0ea5e9" />
+            <Bar dataKey="Logistic"  name="Logistic Regression" fill="#6366f1" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -407,9 +460,15 @@ function FeatureImportanceChart({ data }) {
 }
 
 
+
 export default function App() {
-  const [models] = useState(INITIAL_MODELS)
-  const [selectedModelName, setSelectedModelName] = useState(models[0].name)
+  const [models, setModels] = useState(INITIAL_MODELS)
+  const [featureImportance, setFeatureImportance] = useState(FEATURE_IMPORTANCE)
+
+  const [loadingMetrics, setLoadingMetrics] = useState(true)
+  const [metricsError, setMetricsError] = useState(null)
+
+  const [selectedModelName, setSelectedModelName] = useState(INITIAL_MODELS[0].name)
   const [metric, setMetric] = useState('auc')
   const [predictionResults, setPredictionResults] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -454,6 +513,36 @@ export default function App() {
       setLoading(false)
     }
   }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoadingMetrics(true)
+        setMetricsError(null)
+
+        const [metricsRes, fiRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/models/metrics`),
+          fetch(`${API_BASE_URL}/models/feature-importance`)
+        ])
+
+        if (!metricsRes.ok || !fiRes.ok) {
+          throw new Error('Error al cargar datos de modelos')
+        }
+
+        const metricsData = await metricsRes.json()
+        const fiData = await fiRes.json()
+
+        setModels(metricsData.models || [])
+        setFeatureImportance(fiData.importance || [])
+      } catch (err) {
+        console.error(err)
+        setMetricsError('No se pudieron cargar las métricas desde la API.')
+      } finally {
+        setLoadingMetrics(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   return (
     <div className="app-root">
@@ -469,17 +558,27 @@ export default function App() {
         {/* Panel lado izquierdo: métricas y comparación */}
         <section className="layout-two-columns">
           <div className="left-column">
-            <MetricSelector metric={metric} onChange={setMetric} />
-            <MetricBars models={models} metric={metric} />
-            
-            {/* NUEVO: gráfico comparativo interactivo de rendimiento */}
-            <ModelPerformanceChart models={models} />
+            {metricsError && (
+              <div className="card">
+                <p className="error-msg">{metricsError}</p>
+              </div>
+            )}
 
-            {/* NUEVO: gráfico de importancia de características */}
-            <FeatureImportanceChart data={FEATURE_IMPORTANCE} />
-
-            <ModelsTable models={models} />
+            {loadingMetrics ? (
+              <div className="card">
+                <p>Cargando métricas de los modelos...</p>
+              </div>
+            ) : (
+              <>
+                <MetricSelector metric={metric} onChange={setMetric} />
+                <MetricBars models={models} metric={metric} />
+                <ModelPerformanceChart models={models} />
+                <FeatureImportanceChart data={featureImportance} />
+                <ModelsTable models={models} />
+              </>
+            )}
           </div>
+
 
 
           {/* Panel lado derecho: detalle + predicción */}
