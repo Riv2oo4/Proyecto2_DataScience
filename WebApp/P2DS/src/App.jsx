@@ -386,9 +386,6 @@ function PredictionResults({ results }) {
           </tbody>
         </table>
       </div>
-      <p className="small-note">
-        * Estos valores dependen del endpoint de predicción que implementes en tu backend.
-      </p>
     </div>
   )
 }
@@ -404,10 +401,9 @@ function ModelPerformanceChart({ models }) {
 
   return (
     <div className="card">
-      <h2>Rendimiento de modelos (interactivo)</h2>
+      <h2>Rendimiento de modelos</h2>
       <p className="card-subtitle">
         Compara simultáneamente AUC, F1 y Brier score para cada modelo. 
-        Pasa el cursor sobre las barras para ver los valores exactos.
       </p>
       <div style={{ width: '100%', height: 320 }}>
         <ResponsiveContainer>
@@ -548,10 +544,6 @@ export default function App() {
     <div className="app-root">
       <header className="app-header">
         <h1>Dashboard de Modelos – Proyecto Data Science</h1>
-        <p className="app-header-subtitle">
-          Visualización y comparación de modelos de predicción de compra,
-          con soporte para predicciones interactivas.
-        </p>
       </header>
 
       <main className="app-main">
@@ -610,13 +602,6 @@ export default function App() {
           </div>
         </section>
       </main>
-
-      <footer className="app-footer">
-        <p>
-          Proyecto 2 – CC3084 Data Science &middot; 
-          Dashboard interactivo para visualización y experimentación con modelos.
-        </p>
-      </footer>
     </div>
   )
 }
