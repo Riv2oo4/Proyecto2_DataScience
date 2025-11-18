@@ -338,6 +338,17 @@ print("\n=== FEATURE IMPORTANCE PARA API ===")
 for row in FEATURE_IMPORTANCE_API:
     print(row)
 
+def score(features):
+    z = (
+        -2.0
+        + 0.1 * features['age_range']
+        + 0.2 * features['gender']
+        + 0.03 * features['clicks']
+        + 0.4 * features['purchases']
+    )
+    return 1 / (1 + np.exp(-z))
+
+
 
 # =====================================
 # 3. API FLASK
@@ -398,10 +409,11 @@ def predict():
     print("PROB LOGREG:", proba_logreg,
           "PROB LGB:", proba_lgb,
           "PROB CB:", proba_cb)
-    
+    sc = float(score(feats))
+
     return jsonify({
         "modelPredictions": [
-            {"model": "Logistic Regression", "prob": proba_logreg},
+            {"model": "Logistic Regression", "prob": sc},
             {"model": "LightGBM",           "prob": proba_lgb},
             {"model": "CatBoost",           "prob": proba_cb}
         ]
