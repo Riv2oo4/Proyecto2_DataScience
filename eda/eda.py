@@ -133,7 +133,7 @@ if 'user_id' in train.columns and 'user_id' in user_info.columns:
         print("\nTasa de conversión (label) por age_range:")
         print(train_ui.groupby('age_range')['label'].mean())
 
-# 4.2 Historial de acciones
+# Historial de acciones
 if 'user_id' in user_log.columns and 'action_type' in user_log.columns:
     MAX_ROWS = 1_000_000
     if len(user_log) > MAX_ROWS:
@@ -171,7 +171,7 @@ def save_fig(name):
     plt.close()
     print(f"Figura guardada: {path}")
 
-# 5.1 Distribución de la variable objetivo (label)
+# Distribución de la variable objetivo (label)
 if 'label' in train.columns:
     plt.figure()
     train['label'].hist(bins=3)
@@ -180,7 +180,7 @@ if 'label' in train.columns:
     plt.title('Distribución de la variable objetivo (label)')
     save_fig('hist_label.png')
 
-# 5.2 Histograma de age_range
+# Histograma de age_range
 if 'age_range' in user_info.columns:
     plt.figure()
     user_info['age_range'].hist()
@@ -189,7 +189,7 @@ if 'age_range' in user_info.columns:
     plt.title('Distribución de rango de edad')
     save_fig('hist_age_range.png')
 
-# 5.3 Barras de gender
+# Barras de gender
 if 'gender' in user_info.columns:
     plt.figure()
     user_info['gender'].value_counts(dropna=False).plot(kind='bar')
@@ -198,7 +198,7 @@ if 'gender' in user_info.columns:
     plt.title('Distribución de género (incluye NaN)')
     save_fig('bar_gender.png')
 
-# 5.4 Barras de action_type
+# Barras de action_type
 if 'action_type' in user_log.columns:
     plt.figure()
     user_log['action_type'].value_counts().sort_index().plot(kind='bar')
@@ -207,7 +207,7 @@ if 'action_type' in user_log.columns:
     plt.title('Distribución de tipos de acción en user_log')
     save_fig('bar_action_type.png')
 
-# 5.5 Histograma del número de logs por usuario
+# Histograma del número de logs por usuario
 if 'user_id' in user_log.columns:
     logs_per_user = user_log.groupby('user_id').size()
     plt.figure()
